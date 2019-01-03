@@ -2,48 +2,35 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\ElasticsearchService;
 use Illuminate\Http\Request;
 use App\Search\Elastic;
 use App\Post;
-
-
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class SearchController extends Controller
 {
-    public function searchPosts(Request $request)
+    public function index()
     {
-        $query = $request->input('q');
+        return view('index');
+    }
 
+    public function searchPosts(Request $request, Post $post)
+    {
+        $query = $request->get('q');
+        if (empty($query)) {
+            return redirect(route('index'));
+        }
+        $size = 8;
+        $from = ($request->get('page', 1) - 1) * $size;
         $elastic = app(Elastic::class);
 
-        $instance = new Post;
+        $elasticService = new ElasticsearchService($post, $elastic, $query, $size, $from);
+        $results = $elasticService->searchWithHighlight();
+        $totalResults = $elasticService->getResultsAmount();
 
-        $items = $elastic->search([
-            'index' => $instance->getSearchIndex(),
-            'type' => $instance->getSearchType(),
-            'body' => [
-                'query' => [
-                    'multi_match' => [
-                        'fields' => ['title', 'body'],
-                        'query' => $query,
-                        'fuzziness' => 'AUTO',
-                    ],
-                ],
-                'highlight' => [
-                    'fragment_size' => '200',
-                    'pre_tags' => ["<b>"],
-                    'post_tags' => ["</b>"],
-                    'fields' => ['body' => new \stdClass()],
-                ],
-            ],
-        ]);
-
-        $results = array_pluck($items['hits']['hits'], '_source') ?: [];
-        $highlights = array_pluck($items['hits']['hits'], 'highlight') ?: [];
-
-        foreach ($results as $k => &$v) {
-            $v['highlight'] = $highlights[$k]['body'][0];
-        }
-        return view('search', compact('results'));
+        $currentPage = LengthAwarePaginator::resolveCurrentPage();
+        $paginator = new LengthAwarePaginator($results, $totalResults, $size, $currentPage,['path' => url('search')]);
+        return view('search', compact('results','paginator', 'query'));
     }
 }
