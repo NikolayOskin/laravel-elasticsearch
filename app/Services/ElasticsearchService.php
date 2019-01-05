@@ -12,26 +12,13 @@ class ElasticsearchService
     protected $foundItems;
     protected $foundItemsAmount;
 
-    public function __construct($model, $elastic, $query, int $size, int $from)
+    public function __construct($model, $elastic, string $query = "", int $size, int $from)
     {
         $this->model = $model;
         $this->elastic = $elastic;
         $this->query = $query;
         $this->size = $size;
         $this->from = $from;
-    }
-
-    public function getResultsWithHighlight():array
-    {
-        $this->searchWithHighlight();
-
-        $results = array_pluck($this->foundItems['hits']['hits'], '_source') ?: [];
-        $highlights = array_pluck($this->foundItems['hits']['hits'], 'highlight') ?: [];
-
-        foreach ($results as $k => &$v) {
-            $v['highlight'] = $highlights[$k]['body'][0];
-        }
-        return $results;
     }
 
     public function searchWithHighlight()
@@ -59,7 +46,18 @@ class ElasticsearchService
         ]);
         $this->foundItems = $items;
         $this->foundItemsAmount = $items['hits']['total'];
-        return $this;
+        return $this->buildResultsWithHighlight($items);
+    }
+
+    public function buildResultsWithHighlight(array $items): array
+    {
+        $results = array_pluck($items['hits']['hits'], '_source') ?: [];
+        $highlights = array_pluck($items['hits']['hits'], 'highlight') ?: [];
+
+        foreach ($results as $k => &$v) {
+            $v['highlight'] = $highlights[$k]['body'][0];
+        }
+        return $results;
     }
 
     public function getResultsAmount():int
@@ -70,5 +68,4 @@ class ElasticsearchService
         $this->searchWithHighlight();
         return $this->foundItemsAmount;
     }
-
 }
