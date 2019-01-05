@@ -30,7 +30,13 @@ class SearchController extends Controller
         $totalResults = $elasticService->getResultsAmount();
 
         $currentPage = LengthAwarePaginator::resolveCurrentPage();
-        $paginator = new LengthAwarePaginator($results, $totalResults, $size, $currentPage,['path' => url('search')]);
+        $paginator = new LengthAwarePaginator(
+            $results,
+            $totalResults,
+            $size,
+            $currentPage,
+            ['path' => url('search')]);
+
         return view('search', compact('results','paginator', 'query'));
     }
 }
