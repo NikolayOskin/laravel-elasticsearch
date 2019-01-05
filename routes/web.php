@@ -11,4 +11,5 @@
 |
 */
 
-Route::get('/', 'SearchController@searchPosts');
+Route::get('search/', 'SearchController@searchPosts')->name('search');
+Route::get('/', 'SearchController@index')->name('index');
